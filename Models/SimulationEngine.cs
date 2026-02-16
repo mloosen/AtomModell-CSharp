@@ -106,7 +106,7 @@ public class SimulationEngine
     /// <summary>
     /// Generiert Samplepunkte für das aktuelle Orbital des ersten Elektrons
     /// </summary>
-    public List<(double x, double y, double z, double probability)>? GenerateOrbitalSamples(int sampleCount = 1000)
+    public List<Vector2>? GenerateOrbitalSamples(int sampleCount = 1000)
     {
         if (Atoms.Count == 0) return null;
 

@@ -23,10 +23,33 @@
                 <Canvas x:Name="RenderCanvas" Background="#0a0a0a" MouseMove="RenderCanvas_MouseMove"/>
             </TabItem>
 
-            <!-- Tab 2: Raytracing/Densitymap -->
+            <!-- Tab 2: Raytracing/Densitymap 2D -->
             <TabItem Header="Densitymap (Raytracing)" Background="#1a1a1a" Foreground="White" Padding="10,5">
                 <Grid Background="#000">
                     <Image x:Name="RaytracingImage" Stretch="UniformToFill"/>
+                    <Border x:Name="Overlay2D" Background="#AA000000" Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Berechnung läuft..." FontSize="20" Foreground="#FFD700" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 3: 3D Raytracing -->
+            <TabItem Header="3D Raytracing" Background="#1a1a1a" Foreground="White" Padding="10,5">
+                <Grid Background="#000">
+                    <Image x:Name="Raytracing3DImage" Stretch="UniformToFill" 
+                           MouseLeftButtonDown="Raytracing3DImage_MouseLeftButtonDown"
+                           MouseMove="Raytracing3DImage_MouseMove"
+                           MouseLeftButtonUp="Raytracing3DImage_MouseLeftButtonUp"
+                           Cursor="Hand"/>
+                    <Border x:Name="Overlay3D" Background="#AA000000" Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="⏳" FontSize="48" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Berechnung läuft..." FontSize="20" Foreground="#FFD700" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>
@@ -64,6 +87,74 @@
                     <TextBlock x:Name="EnergyText" Text="E = -13.6 eV" FontSize="11" Margin="0,2" Foreground="#88ff88"/>
                 </StackPanel>
             </Border>
+
+            <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
+
+            <!-- 3D Raytracing Controls -->
+            <TextBlock Text="Orbital Controls (3D)" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Margin="0,0,0,10">
+                <!-- n Slider -->
+                <StackPanel Margin="0,5,0,5">
+                    <TextBlock Text="n (Principal)" FontSize="11" Foreground="#aaa"/>
+                    <Slider x:Name="SliderN" Minimum="1" Maximum="7" Value="1" Height="20" 
+                            Foreground="#5a9fff" Background="#1a1a1a" PreviewMouseUp="SliderN_ValueChanged"/>
+                    <TextBlock x:Name="ValueN" Text="1" FontSize="10" Foreground="#88ff88"/>
+                </StackPanel>
+
+                <!-- l Slider -->
+                <StackPanel Margin="0,5,0,5">
+                    <TextBlock Text="l (Azimuthal)" FontSize="11" Foreground="#aaa"/>
+                    <Slider x:Name="SliderL" Minimum="0" Maximum="3" Value="0" Height="20" 
+                            Foreground="#5a9fff" Background="#1a1a1a" PreviewMouseUp="SliderL_ValueChanged"/>
+                    <TextBlock x:Name="ValueL" Text="0" FontSize="10" Foreground="#88ff88"/>
+                </StackPanel>
+
+                <!-- m Slider -->
+                <StackPanel Margin="0,5,0,5">
+                    <TextBlock Text="m (Magnetic)" FontSize="11" Foreground="#aaa"/>
+                    <Slider x:Name="SliderM" Minimum="-3" Maximum="3" Value="0" Height="20" 
+                            Foreground="#5a9fff" Background="#1a1a1a" PreviewMouseUp="SliderM_ValueChanged"/>
+                    <TextBlock x:Name="ValueM" Text="0" FontSize="10" Foreground="#88ff88"/>
+                </StackPanel>
+
+                <!-- Color Scale -->
+                <StackPanel Margin="0,5,0,5">
+                    <TextBlock Text="Color Scale" FontSize="11" Foreground="#aaa"/>
+                    <Slider x:Name="SliderColorScale" Minimum="0.1" Maximum="5" Value="1" Height="20" 
+                            Foreground="#5a9fff" Background="#1a1a1a" PreviewMouseUp="SliderColorScale_ValueChanged"/>
+                    <TextBlock x:Name="ValueColorScale" Text="1" FontSize="10" Foreground="#88ff88"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
+
+            <!-- Clipping Controls -->
+            <TextBlock Text="Clipping" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Margin="0,0,0,10">
+                <!-- X Clip -->
+                <StackPanel Margin="0,3,0,3">
+                    <TextBlock Text="X Clip" FontSize="10" Foreground="#aaa"/>
+                    <Slider x:Name="SliderClipX" Minimum="0" Maximum="1" Value="0" Height="16" 
+                            Foreground="#ff6b6b" Background="#1a1a1a" PreviewMouseUp="SliderClipX_ValueChanged"/>
+                    <TextBlock x:Name="ValueClipX" Text="0" FontSize="9" Foreground="#ff9999"/>
+                </StackPanel>
+
+                <!-- Y Clip -->
+                <StackPanel Margin="0,3,0,3">
+                    <TextBlock Text="Y Clip" FontSize="10" Foreground="#aaa"/>
+                    <Slider x:Name="SliderClipY" Minimum="0" Maximum="1" Value="0" Height="16" 
+                            Foreground="#6bff6b" Background="#1a1a1a" PreviewMouseUp="SliderClipY_ValueChanged"/>
+                    <TextBlock x:Name="ValueClipY" Text="0" FontSize="9" Foreground="#99ff99"/>
+                </StackPanel>
+
+                <!-- Z Clip -->
+                <StackPanel Margin="0,3,0,3">
+                    <TextBlock Text="Z Clip" FontSize="10" Foreground="#aaa"/>
+                    <Slider x:Name="SliderClipZ" Minimum="0" Maximum="1" Value="0" Height="16" 
+                            Foreground="#6b6bff" Background="#1a1a1a" PreviewMouseUp="SliderClipZ_ValueChanged"/>
+                    <TextBlock x:Name="ValueClipZ" Text="0" FontSize="9" Foreground="#9999ff"/>
+                </StackPanel>
+            </StackPanel>
 
             <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
 

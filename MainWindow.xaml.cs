@@ -24,7 +24,17 @@ public partial class MainWindow : Window
     private Vector2 _canvasCenter;
     private const float SCALE_FACTOR = 0.5f;  // Skalierungsfaktor für Visualisierung
     private RaytracingEngine _raytracingEngine = null!;
+    private RaytracingEngine3D _raytracingEngine3D = null!;
     private int _lastRenderedN = -1, _lastRenderedL = -1, _lastRenderedM = -1;  // Cache für Raytracing
+    private int _last3DN = -1, _last3DL = -1, _last3DM = -1;  // Cache für 3D Raytracing
+    
+    // Mouse-Interaktion für 3D Rotation
+    private bool _isDragging = false;
+    private Point _lastMousePos;
+    
+    // Async Rendering Flags
+    private bool _isRendering2D = false;
+    private bool _isRendering3D = false;
 
     public MainWindow()
     {
@@ -38,10 +48,11 @@ public partial class MainWindow : Window
         _engine.OrbitDistance = 80.0f;  // Kleinerer Orbit für bessere Sicht
         _engine.Initialize();
 
-        // Raytracing Engine initialisieren
+        // Raytracing Engines initialisieren
         int canvasWidth = (int)RenderCanvas.ActualWidth > 0 ? (int)RenderCanvas.ActualWidth : 800;
         int canvasHeight = (int)RenderCanvas.ActualHeight > 0 ? (int)RenderCanvas.ActualHeight : 600;
         _raytracingEngine = new RaytracingEngine(canvasWidth, canvasHeight);
+        _raytracingEngine3D = new RaytracingEngine3D(canvasWidth, canvasHeight);
 
         // Render Timer starten
         _renderTimer = new DispatcherTimer();
@@ -49,10 +60,16 @@ public partial class MainWindow : Window
         _renderTimer.Tick += RenderTimer_Tick;
         _renderTimer.Start();
 
+        // Initialisiere die Slider-Anzeigen
+        ValueN.Text = SliderN.Value.ToString();
+        ValueL.Text = SliderL.Value.ToString();
+        ValueM.Text = SliderM.Value.ToString();
+        ValueColorScale.Text = SliderColorScale.Value.ToString("F2");
+
         UpdateStatus();
     }
 
-    private void RenderTimer_Tick(object? sender, EventArgs e)
+    private async void RenderTimer_Tick(object? sender, EventArgs e)
     {
         _engine.Update();
         
@@ -63,7 +80,11 @@ public partial class MainWindow : Window
         }
         else if (ViewTabs.SelectedIndex == 1)
         {
-            RenderRaytracing();  // Raytracing/Densitymap
+            await RenderRaytracingAsync();  // Raytracing/Densitymap
+        }
+        else if (ViewTabs.SelectedIndex == 2)
+        {
+            await RenderRaytracing3DAsync();  // 3D Raytracing
         }
         
         UpdateStatus();
@@ -192,9 +213,9 @@ public partial class MainWindow : Window
         RenderCanvas.Children.Add(path);
     }
 
-    private void RenderRaytracing()
+    private async Task RenderRaytracingAsync()
     {
-        if (_engine.Atoms.Count == 0) return;
+        if (_engine.Atoms.Count == 0 || _isRendering2D) return;
 
         var firstAtom = _engine.Atoms[0];
         var electron = firstAtom.GetElectrons().FirstOrDefault();
@@ -206,19 +227,72 @@ public partial class MainWindow : Window
             _lastRenderedL != electron.QuantumNumberL || 
             _lastRenderedM != electron.QuantumNumberM)
         {
-            // Rendere neue Densitymap
-            var bitmap = _raytracingEngine.RenderOrbitalDensity(
-                electron.QuantumNumberN,
-                electron.QuantumNumberL,
-                electron.QuantumNumberM,
-                scale: 30.0f
-            );
+            _isRendering2D = true;
+            Overlay2D.Visibility = System.Windows.Visibility.Visible;
+            
+            int n = electron.QuantumNumberN;
+            int l = electron.QuantumNumberL;
+            int m = electron.QuantumNumberM;
 
-            RaytracingImage.Source = bitmap;
+            try
+            {
+                // Berechne Pixel im Background-Thread, erstelle Bitmap im UI-Thread
+                var pixels = await Task.Run(() => _raytracingEngine.ComputePixels(n, l, m, scale: 30.0f));
+                var bitmap = _raytracingEngine.CreateBitmap(pixels);
+                RaytracingImage.Source = bitmap;
 
-            _lastRenderedN = electron.QuantumNumberN;
-            _lastRenderedL = electron.QuantumNumberL;
-            _lastRenderedM = electron.QuantumNumberM;
+                _lastRenderedN = n;
+                _lastRenderedL = l;
+                _lastRenderedM = m;
+            }
+            finally
+            {
+                _isRendering2D = false;
+                Overlay2D.Visibility = System.Windows.Visibility.Collapsed;
+            }
+        }
+    }
+
+    private async Task RenderRaytracing3DAsync()
+    {
+        if (_isRendering3D) return;
+
+        // Lese Quantum-Zahlen aus den Schiebereglern
+        int n = (int)SliderN.Value;
+        int l = (int)SliderL.Value;
+        int m = (int)SliderM.Value;
+
+        // Prüfe ob die Werte sich geändert haben oder ob initial gerendert werden muss
+        if (_last3DN != n || _last3DL != l || _last3DM != m)
+        {
+            _isRendering3D = true;
+            Overlay3D.Visibility = System.Windows.Visibility.Visible;
+            
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Rendering 3D: n={n}, l={l}, m={m}");
+                
+                // Berechne Pixel im Background-Thread, erstelle Bitmap im UI-Thread
+                var pixels = await Task.Run(() => _raytracingEngine3D.ComputePixels3D(n, l, m));
+                var bitmap = _raytracingEngine3D.CreateBitmap(pixels);
+                Raytracing3DImage.Source = bitmap;
+
+                _last3DN = n;
+                _last3DL = l;
+                _last3DM = m;
+                
+                System.Diagnostics.Debug.WriteLine("3D Rendering completed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"3D Rendering error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
+            }
+            finally
+            {
+                _isRendering3D = false;
+                Overlay3D.Visibility = System.Windows.Visibility.Collapsed;
+            }
         }
     }
 
@@ -287,7 +361,98 @@ public partial class MainWindow : Window
 
     private void RenderCanvas_MouseMove(object sender, MouseEventArgs e)
     {
-        var pos = e.GetPosition(RenderCanvas);
         // Kann für zukünftige Interaktionen genutzt werden
+    }
+
+    // 3D Raytracing Slider Event Handler
+    private void SliderN_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        int n = (int)SliderN.Value;
+        // Stelle sicher, dass l <= n-1 ist
+        if (SliderL.Value > n - 1)
+            SliderL.Value = n - 1;
+        SliderL.Maximum = n - 1;
+        ValueN.Text = n.ToString();
+    }
+
+    private void SliderL_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        int l = (int)SliderL.Value;
+        // Stelle sicher, dass m zwischen -l und +l liegt
+        if (SliderM.Value > l)
+            SliderM.Value = l;
+        if (SliderM.Value < -l)
+            SliderM.Value = -l;
+        SliderM.Minimum = -l;
+        SliderM.Maximum = l;
+        ValueL.Text = l.ToString();
+    }
+
+    private void SliderM_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        int m = (int)SliderM.Value;
+        ValueM.Text = m.ToString();
+    }
+
+    private void SliderColorScale_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        double colorScale = SliderColorScale.Value;
+        _raytracingEngine3D.ColorScale = (float)colorScale;
+        ValueColorScale.Text = colorScale.ToString("F2");
+    }
+
+    private void SliderClipX_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        double clipX = SliderClipX.Value;
+        _raytracingEngine3D.ClipX = (float)clipX;
+        ValueClipX.Text = clipX.ToString("F2");
+    }
+
+    private void SliderClipY_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        double clipY = SliderClipY.Value;
+        _raytracingEngine3D.ClipY = (float)clipY;
+        ValueClipY.Text = clipY.ToString("F2");
+    }
+
+    private void SliderClipZ_ValueChanged(object sender, MouseButtonEventArgs e)
+    {
+        double clipZ = SliderClipZ.Value;
+        _raytracingEngine3D.ClipZ = (float)clipZ;
+        ValueClipZ.Text = clipZ.ToString("F2");
+    }
+
+    // 3D Mouse Rotation Event Handlers
+    private void Raytracing3DImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _isDragging = true;
+        _lastMousePos = e.GetPosition(Raytracing3DImage);
+        Raytracing3DImage.CaptureMouse();
+    }
+
+    private void Raytracing3DImage_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDragging) return;
+
+        Point currentPos = e.GetPosition(Raytracing3DImage);
+        double deltaX = currentPos.X - _lastMousePos.X;
+        double deltaY = currentPos.Y - _lastMousePos.Y;
+
+        // Update Rotation basierend auf Mausbewegung
+        // deltaX → Rotation um Y-Achse (horizontal)
+        // deltaY → Rotation um X-Achse (vertikal)
+        _raytracingEngine3D.RotationY += (float)(deltaX * 0.01);
+        _raytracingEngine3D.RotationX += (float)(deltaY * 0.01);
+
+        // Erzwinge Neurendering durch Cache-Reset
+        _last3DN = -1;
+
+        _lastMousePos = currentPos;
+    }
+
+    private void Raytracing3DImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _isDragging = false;
+        Raytracing3DImage.ReleaseMouseCapture();
     }
 }

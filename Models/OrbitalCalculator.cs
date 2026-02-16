@@ -5,6 +5,7 @@ namespace AtomModell_CSharp.Models;
 
 /// <summary>
 /// Berechnet Wasserstoff-Orbitale basierend auf der Schrödinger-Gleichung
+/// Korrekte Implementierung nach dem C++ Original
 /// </summary>
 public class OrbitalCalculator
 {
@@ -13,22 +14,143 @@ public class OrbitalCalculator
 
     /// <summary>
     /// Berechnet den Radialteil der Wellenfunktion R_{n,l}(r)
+    /// Vollständige Implementierung mit korrekten Laguerre-Polynomen
     /// </summary>
     public static double RadialWaveFunction(int n, int l, double r)
     {
         double rho = 2.0 * r / (n * A0);
         
-        // Normalisierungskonstante
-        double norm = Math.Sqrt(
-            Math.Pow(2.0 / (n * A0), 3) * 
-            Factorial(n - l - 1) / 
-            (2 * n * Factorial(n + l))
-        );
+        // Assoziierte Laguerre-Polynome L_{n-l-1}^{2l+1}(rho)
+        int k = n - l - 1;
+        int alpha = 2 * l + 1;
 
-        // Assoziierte Laguerre-Polynome (vereinfachte Implementierung)
-        double laguerre = AssociatedLaguerre(rho, n - l - 1, 2 * l + 1);
+        double L = 1.0;
+        if (k == 1)
+        {
+            L = 1.0 + alpha - rho;
+        }
+        else if (k > 1)
+        {
+            double Lm2 = 1.0;
+            double Lm1 = 1.0 + alpha - rho;
+            for (int j = 2; j <= k; j++)
+            {
+                L = ((2 * j - 1 + alpha - rho) * Lm1 - (j - 1 + alpha) * Lm2) / j;
+                Lm2 = Lm1;
+                Lm1 = L;
+            }
+        }
 
-        return norm * Math.Exp(-rho / 2.0) * Math.Pow(rho, l) * laguerre;
+        // Normalisierungskonstante mit Gamma-Funktion
+        double norm = Math.Pow(2.0 / (n * A0), 3) * 
+                     Gamma(n - l) / 
+                     (2.0 * n * Gamma(n + l + 1));
+
+        double R = Math.Sqrt(norm) * Math.Exp(-rho / 2.0) * Math.Pow(rho, l) * L;
+        return R;
+    }
+
+    /// <summary>
+    /// Berechnet die Wahrscheinlichkeitsdichte |ψ|²
+    /// </summary>
+    public static double ProbabilityDensity(int n, int l, int m, double r, double theta, double phi)
+    {
+        // Radial part |R(r)|²
+        double R = RadialWaveFunction(n, l, r);
+        double radial = R * R;
+
+        // Angular part |P_l^m(cosθ)|²
+        double cosTheta = Math.Cos(theta);
+        double Plm = AssociatedLegendre(l, Math.Abs(m), cosTheta);
+        double angular = Plm * Plm;
+
+        // Spherical harmonic normalization (simplified for |Y|²)
+        double normY = (2 * l + 1) * Gamma(l - Math.Abs(m) + 1) / 
+                      (4.0 * PI * Gamma(l + Math.Abs(m) + 1));
+
+        double intensity = radial * angular * normY;
+        return intensity;
+    }
+
+    /// <summary>
+    /// Berechnet die rohe Intensität wie im C++ Original (inferno-Funktion)
+    /// OHNE sphärische Harmonische Normalisierung normY
+    /// intensity = radial * angular (direkt)
+    /// </summary>
+    public static double RawIntensity(int n, int l, int m, double r, double theta, double phi)
+    {
+        // Radial part |R(r)|² - identisch zum C++ inferno()
+        double rho = 2.0 * r / (n * A0);
+
+        int k = n - l - 1;
+        int alpha = 2 * l + 1;
+
+        double L = 1.0;
+        if (k == 1)
+        {
+            L = 1.0 + alpha - rho;
+        }
+        else if (k > 1)
+        {
+            double Lm2 = 1.0;
+            double Lm1 = 1.0 + alpha - rho;
+            for (int j = 2; j <= k; j++)
+            {
+                L = ((2 * j - 1 + alpha - rho) * Lm1 - (j - 1 + alpha) * Lm2) / j;
+                Lm2 = Lm1;
+                Lm1 = L;
+            }
+        }
+
+        double norm = Math.Pow(2.0 / (n * A0), 3) * Gamma(n - l) / (2.0 * n * Gamma(n + l + 1));
+        double R = Math.Sqrt(norm) * Math.Exp(-rho / 2.0) * Math.Pow(rho, l) * L;
+        double radial = R * R;
+
+        // Angular part |P_l^m(cosθ)|² - identisch zum C++
+        double x = Math.Cos(theta);
+        int absM = Math.Abs(m);
+
+        double Pmm = 1.0;
+        if (absM > 0)
+        {
+            double somx2 = Math.Sqrt((1.0 - x) * (1.0 + x));
+            double fact = 1.0;
+            for (int j = 1; j <= absM; j++)
+            {
+                Pmm *= -fact * somx2;
+                fact += 2.0;
+            }
+        }
+
+        double Plm;
+        if (l == absM)
+        {
+            Plm = Pmm;
+        }
+        else
+        {
+            double Pm1m = x * (2 * absM + 1) * Pmm;
+            if (l == absM + 1)
+            {
+                Plm = Pm1m;
+            }
+            else
+            {
+                double Pll = 0;
+                for (int ll = absM + 2; ll <= l; ll++)
+                {
+                    Pll = ((2 * ll - 1) * x * Pm1m - (ll + absM - 1) * Pmm) / (ll - absM);
+                    Pmm = Pm1m;
+                    Pm1m = Pll;
+                }
+                Plm = Pm1m;
+            }
+        }
+
+        double angular = Plm * Plm;
+
+        // Direkt radial * angular - KEINE normY Normalisierung (wie C++ Original)
+        return radial * angular;
     }
 
     /// <summary>
@@ -42,23 +164,13 @@ public class OrbitalCalculator
     }
 
     /// <summary>
-    /// Berechnet die Wahrscheinlichkeitsdichte |ψ|²
-    /// </summary>
-    public static double ProbabilityDensity(int n, int l, int m, double r, double theta, double phi)
-    {
-        Complex psi = WaveFunction(n, l, m, r, theta, phi);
-        double magnitude = psi.Magnitude;  // |ψ|
-        return magnitude * magnitude;       // |ψ|²
-    }
-
-    /// <summary>
     /// Sphärische Harmonische Y_l^m(θ,φ)
     /// </summary>
     public static Complex SphericalHarmonic(int l, int m, double theta, double phi)
     {
-        // Vereinfachte Version für kleine l-Werte
-        double normalisation = Math.Sqrt((2 * l + 1) * Factorial(l - Math.Abs(m)) / 
-                                        (4 * PI * Factorial(l + Math.Abs(m))));
+        // Normalisierung
+        double norm = Math.Sqrt((2 * l + 1) * Gamma(l - Math.Abs(m) + 1) / 
+                                (4 * PI * Gamma(l + Math.Abs(m) + 1)));
 
         // Assoziiertes Legendre-Polynom
         double legendre = AssociatedLegendre(l, Math.Abs(m), Math.Cos(theta));
@@ -67,49 +179,73 @@ public class OrbitalCalculator
         double realPart = Math.Cos(m * phi);
         double imagPart = Math.Sin(m * phi);
 
-        double amplitude = normalisation * legendre;
+        double amplitude = norm * legendre;
         return new Complex(amplitude * realPart, amplitude * imagPart);
     }
 
     /// <summary>
-    /// Assoziierte Legendre-Polynome P_l^m(x)
+    /// Assoziierte Legendre-Polynome P_l^m(x) - Vollständige Implementierung
     /// </summary>
     private static double AssociatedLegendre(int l, int m, double x)
     {
-        if (l == 0 && m == 0) return 1.0;
-        if (l == 1 && m == 0) return x;
-        if (l == 1 && m == 1) return -Math.Sqrt(1 - x * x);
-        if (l == 2 && m == 0) return 0.5 * (3 * x * x - 1);
-        if (l == 2 && m == 1) return -3 * x * Math.Sqrt(1 - x * x);
-        if (l == 2 && m == 2) return 3 * (1 - x * x);
-        
-        return 0.0;
-    }
-
-    /// <summary>
-    /// Assoziierte Laguerre-Polynome L_n^k(x)
-    /// </summary>
-    private static double AssociatedLaguerre(double x, int n, int k)
-    {
-        if (n == 0) return 1.0;
-        if (n == 1) return 1.0 + k - x;
-        
-        // Rekursionsformel
-        double prev2 = 1.0;
-        double prev1 = 1.0 + k - x;
-
-        for (int i = 2; i <= n; i++)
+        // P_m^m(x)
+        double Pmm = 1.0;
+        if (m > 0)
         {
-            double curr = ((2 * i + k - 1 - x) * prev1 - (i + k - 1) * prev2) / i;
-            prev2 = prev1;
-            prev1 = curr;
+            double somx2 = Math.Sqrt((1.0 - x) * (1.0 + x));
+            double fact = 1.0;
+            for (int j = 1; j <= m; j++)
+            {
+                Pmm *= -fact * somx2;
+                fact += 2.0;
+            }
         }
 
-        return prev1;
+        if (l == m)
+            return Pmm;
+
+        // P_m+1^m(x)
+        double Pm1m = x * (2 * m + 1) * Pmm;
+        if (l == m + 1)
+            return Pm1m;
+
+        // Rekursion für höhere l
+        double Pll = 0.0;
+        for (int ll = m + 2; ll <= l; ll++)
+        {
+            Pll = ((2 * ll - 1) * x * Pm1m - (ll + m - 1) * Pmm) / (ll - m);
+            Pmm = Pm1m;
+            Pm1m = Pll;
+        }
+
+        return Pm1m;
     }
 
     /// <summary>
-    /// Fakultät
+    /// Gamma-Funktion Approximation (für positive Integer)
+    /// </summary>
+    private static double Gamma(double x)
+    {
+        if (x <= 0) return 1.0;
+        
+        // Für Integer: Γ(n) = (n-1)!
+        if (Math.Abs(x - Math.Round(x)) < 1e-10)
+        {
+            int n = (int)Math.Round(x);
+            if (n <= 1) return 1.0;
+            
+            double result = 1.0;
+            for (int i = 2; i < n; i++)
+                result *= i;
+            return result;
+        }
+        
+        // Stirling-Approximation für nicht-Integer
+        return Math.Sqrt(2 * PI / x) * Math.Pow(x / Math.E, x);
+    }
+
+    /// <summary>
+    /// Berechnet Fakultät
     /// </summary>
     private static double Factorial(int n)
     {
@@ -121,46 +257,36 @@ public class OrbitalCalculator
     }
 
     /// <summary>
-    /// Generiert Samplepunkte mit Rejection Sampling
+    /// Sample Points mit Rejection Sampling (für klassische Visualisierung)
     /// </summary>
-    public static List<(double x, double y, double z, double probability)> SamplePoints(
-        int n, int l, int m, int sampleCount = 5000, Random? random = null)
+    public static List<Vector2> SamplePoints(int n, int l, int m, int sampleCount)
     {
-        random ??= new Random();
-        var points = new List<(double, double, double, double)>();
+        var points = new List<Vector2>();
+        var random = new Random(42);  // Fixer Seed für Reproduzierbarkeit
 
-        double maxProb = 0.0;
+        int maxAttempts = sampleCount * 100;
+        int attempts = 0;
 
-        // Erste Pass: Maximum finden
-        for (int i = 0; i < sampleCount; i++)
+        while (points.Count < sampleCount && attempts < maxAttempts)
         {
-            double r = -n * n * Math.Log(random.NextDouble());  // Exponentialverteilung
-            double theta = Math.Acos(2 * random.NextDouble() - 1);
-            double phi = 2 * PI * random.NextDouble();
+            attempts++;
 
-            double prob = ProbabilityDensity(n, l, m, r, theta, phi);
-            if (prob > maxProb) maxProb = prob;
-        }
+            // Sample sphärische Koordinaten
+            double r = random.NextDouble() * 20.0 * n;  // Skaliert mit n
+            double theta = random.NextDouble() * Math.PI;
+            double phi = random.NextDouble() * 2 * Math.PI;
 
-        // Zweite Pass: Rejection Sampling
-        int accepted = 0;
-        while (accepted < sampleCount)
-        {
-            double r = -n * n * Math.Log(random.NextDouble());
-            double theta = Math.Acos(2 * random.NextDouble() - 1);
-            double phi = 2 * PI * random.NextDouble();
+            // Berechne Wahrscheinlichkeitsdichte
+            double density = ProbabilityDensity(n, l, m, r, theta, phi);
 
-            double prob = ProbabilityDensity(n, l, m, r, theta, phi);
-
-            if (random.NextDouble() < prob / maxProb)
+            // Rejection sampling
+            double threshold = random.NextDouble() * 0.01;  // Max-Dichte Schätzung
+            if (density > threshold)
             {
-                // Kartesische Koordinaten
-                double x = r * Math.Sin(theta) * Math.Cos(phi);
-                double y = r * Math.Sin(theta) * Math.Sin(phi);
-                double z = r * Math.Cos(theta);
-
-                points.Add((x, y, z, prob));
-                accepted++;
+                // Konvertiere zu kartesischen Koordinaten (2D Projektion)
+                float x = (float)(r * Math.Sin(theta) * Math.Cos(phi));
+                float y = (float)(r * Math.Sin(theta) * Math.Sin(phi));
+                points.Add(new Vector2(x, y));
             }
         }
 
