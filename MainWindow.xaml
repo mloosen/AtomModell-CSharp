@@ -1,0 +1,69 @@
+﻿<Window x:Class="AtomModell_CSharp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AtomModell_CSharp"
+        mc:Ignorable="d"
+        Title="Wasserstoff Orbital Visualizer - C# .NET 10" 
+        Height="800" Width="1200"
+        Background="#1a1a1a"
+        Foreground="White"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="280"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Canvas für Visualisierung -->
+        <Canvas x:Name="RenderCanvas" Grid.Column="0" Background="#0a0a0a" MouseMove="RenderCanvas_MouseMove"/>
+
+        <!-- Control Panel -->
+        <StackPanel Grid.Column="1" Background="#2a2a2a" Margin="15">
+            <TextBlock Text="Steuerung" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+
+            <!-- Status -->
+            <TextBlock Text="Status:" FontSize="12" FontWeight="Bold" Margin="0,0,0,5"/>
+            <TextBlock x:Name="StatusText" Text="Lädt..." FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap" Foreground="#aaa"/>
+
+            <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
+
+            <!-- Energiesteuerung -->
+            <TextBlock Text="Elektronenenergie:" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Vertical" Margin="0,0,0,10">
+                <Button x:Name="BtnExciteSmall" Content="+ Klein (0.01 eV)" Padding="8" Margin="0,3" Click="BtnExciteSmall_Click" Background="#3a5a3a" Foreground="White"/>
+                <Button x:Name="BtnDeexciteSmall" Content="- Klein (0.01 eV)" Padding="8" Margin="0,3" Click="BtnDeexciteSmall_Click" Background="#3a5a3a" Foreground="White"/>
+                <Button x:Name="BtnExciteLarge" Content="+ Mittel (0.1 eV)" Padding="8" Margin="0,3" Click="BtnExciteLarge_Click" Background="#5a7a5a" Foreground="White"/>
+                <Button x:Name="BtnDeexciteLarge" Content="- Mittel (0.1 eV)" Padding="8" Margin="0,3" Click="BtnDeexciteLarge_Click" Background="#5a7a5a" Foreground="White"/>
+                <Button x:Name="BtnExciteMax" Content="+ Maximum (1.0 eV)" Padding="8" Margin="0,3" Click="BtnExciteMax_Click" Background="#7aaa7a" Foreground="White"/>
+                <Button x:Name="BtnDeexciteMax" Content="- Maximum (1.0 eV)" Padding="8" Margin="0,3" Click="BtnDeexciteMax_Click" Background="#7aaa7a" Foreground="White"/>
+            </StackPanel>
+
+            <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
+
+            <!-- Orbital Info -->
+            <TextBlock Text="Orbital Information:" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
+            <Border Margin="0,0,0,10" Background="#1a1a1a" CornerRadius="4" Padding="8">
+                <StackPanel>
+                    <TextBlock x:Name="OrbitalNText" Text="n = 1" FontSize="11" Margin="0,2"/>
+                    <TextBlock x:Name="OrbitalLText" Text="l = 0" FontSize="11" Margin="0,2"/>
+                    <TextBlock x:Name="OrbitalMText" Text="m = 0" FontSize="11" Margin="0,2"/>
+                    <TextBlock x:Name="EnergyText" Text="E = -13.6 eV" FontSize="11" Margin="0,2" Foreground="#88ff88"/>
+                </StackPanel>
+            </Border>
+
+            <Border BorderBrush="#444" BorderThickness="1" Margin="0,10,0,10"/>
+
+            <!-- Simulation Controls -->
+            <TextBlock Text="Simulation:" FontSize="12" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Vertical" Margin="0,0,0,10">
+                <Button x:Name="BtnPlayPause" Content="▶ Play" Padding="8" Margin="0,3" Click="BtnPlayPause_Click" Background="#3a5a7a" Foreground="White"/>
+                <Button x:Name="BtnReset" Content="↻ Reset" Padding="8" Margin="0,3" Click="BtnReset_Click" Background="#7a3a3a" Foreground="White"/>
+            </StackPanel>
+
+            <!-- FPS Counter -->
+            <TextBlock x:Name="FpsText" Text="FPS: 0" FontSize="11" Foreground="#888" Margin="0,10,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>
