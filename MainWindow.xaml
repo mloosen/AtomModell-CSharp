@@ -16,8 +16,20 @@
             <ColumnDefinition Width="280"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Canvas für Visualisierung -->
-        <Canvas x:Name="RenderCanvas" Grid.Column="0" Background="#0a0a0a" MouseMove="RenderCanvas_MouseMove"/>
+        <!-- TabControl für verschiedene Visualisierungen -->
+        <TabControl x:Name="ViewTabs" Grid.Column="0" Background="#0a0a0a" Foreground="White">
+            <!-- Tab 1: Klassische Ansicht -->
+            <TabItem Header="Klassisch" Background="#1a1a1a" Foreground="White" Padding="10,5">
+                <Canvas x:Name="RenderCanvas" Background="#0a0a0a" MouseMove="RenderCanvas_MouseMove"/>
+            </TabItem>
+
+            <!-- Tab 2: Raytracing/Densitymap -->
+            <TabItem Header="Densitymap (Raytracing)" Background="#1a1a1a" Foreground="White" Padding="10,5">
+                <Grid Background="#000">
+                    <Image x:Name="RaytracingImage" Stretch="UniformToFill"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <!-- Control Panel -->
         <StackPanel Grid.Column="1" Background="#2a2a2a" Margin="15">
