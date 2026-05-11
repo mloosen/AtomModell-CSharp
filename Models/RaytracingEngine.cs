@@ -136,10 +136,14 @@ public class RaytracingEngine
             {
                 double px = (x - _width / 2.0) / scale;
                 double py = (y - _height / 2.0) / scale;
-                double r = Math.Sqrt(px * px + py * py);
-                double theta = Math.Atan2(py, px);
 
-                double density = OrbitalCalculator.ProbabilityDensity(n, l, m, r, theta, 0.0);
+                // Kugelkoordinaten für 2D Querschnitt (z=0 Ebene):
+                // theta ist der Polarwinkel (zur z-Achse), phi liegt in der xy-Ebene.
+                double r = Math.Sqrt(px * px + py * py);
+                double theta = Math.PI / 2.0;
+                double phi = Math.Atan2(py, px);
+
+                double density = OrbitalCalculator.ProbabilityDensity(n, l, m, r, theta, phi);
                 densities[y * _width + x] = density;
 
                 if (density > maxDensity)
@@ -184,10 +188,14 @@ public class RaytracingEngine
             {
                 double px = (x - _width / 2.0) / scale;
                 double py = (y - _height / 2.0) / scale;
-                double r = Math.Sqrt(px * px + py * py);
-                double theta = Math.Atan2(py, px);
 
-                double density = OrbitalCalculator.ProbabilityDensity(n, l, m, r, theta, 0.0);
+                // Kugelkoordinaten für 2D Querschnitt (z=0 Ebene):
+                // theta ist der Polarwinkel (zur z-Achse), phi liegt in der xy-Ebene.
+                double r = Math.Sqrt(px * px + py * py);
+                double theta = Math.PI / 2.0;
+                double phi = Math.Atan2(py, px);
+
+                double density = OrbitalCalculator.ProbabilityDensity(n, l, m, r, theta, phi);
                 densities[y * _width + x] = Math.Log(density + 1);  // Log-Skalierung für besseren Kontrast
 
                 if (density > maxDensity)
